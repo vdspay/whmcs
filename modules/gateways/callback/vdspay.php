@@ -18,22 +18,19 @@ if (!$gatewayParams['type']) {
     die("Module Not Activated");
 }
 
-#Define VdsPay Merchant Credentials
-define("username", $gatewayParams["username"]);
-define("acct_number", $gatewayParams["accountNo"]);
-define("api_key", $gatewayParams["api_key"]);
-define("api_pass", $gatewayParams["api_pass"]);
-
-//Load The Service Class
-$service = new emp_service();
+//Define Credentials
+Vdspay::Username($gatewayParams["username"]); //VdsPay Username
+Vdspay::AccountNo($gatewayParams["accountNo"]); //VdsPay Account Number
+Vdspay::ApiKey($gatewayParams["api_key"]); //VdsPay API Key
+Vdspay::ApiPassword($gatewayParams["api_pass"]); //VdsPay API Password
 
 //Retrieve Transaction ID From Gateway Callback
 $transactionId = $_POST["transid"];
 
 try {
-$transaction = $service->query_transaction($transactionId);
+$transaction = Vdspay_Transaction::query(array("transid" => $transactionId));
 if($transaction["status"] == 'Approved') {
-  $invoiceId = $transaction["reference"];
+  $invoiceId = $transaction["ref_code"];
   $paymentAmount = $transaction["amount"];
   $paymentFee = 0.00;
   $add = addInvoicePayment(
@@ -43,18 +40,16 @@ if($transaction["status"] == 'Approved') {
         $paymentFee,
         $gatewayModuleName
     );
-  header("Location: ../../viewinvoice.php?id=$invoiceId&status=Success");
+  header("Location: ../../../viewinvoice.php?id=$invoiceId&status=Success&paymentsuccess=true");
 	exit();
-} else {
-  $invoiceId = $transaction["reference"];
+} elseif($transaction["status"] == 'Failed')  {
+  $invoiceId = $transaction["ref_code"];
   $msg = $transaction["response"];
-	header("Location: ../../viewinvoice.php?id=$invoiceId&msg=$msg");
+	header("Location: ../../../viewinvoice.php?id=$invoiceId&msg=$msg&paymentfailed=true");
 	exit();
 }} catch(Service_Error $e) {
   $error = json_decode($e, true);
   $msg = $error["Error_Message"];
-  header("Location: ../../viewinvoice.php?id=$invoiceId&msg=$msg");
+  header("Location: ../../../viewinvoice.php?id=$invoiceId&msg=$msg");
 	exit();
 }
-
-
